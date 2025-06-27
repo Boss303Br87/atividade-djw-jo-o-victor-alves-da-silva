@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ponguemeiras</title>
+  <style>
+    body {
+      background-image: url(https://urbanpitch.com/wp-content/uploads/2025/02/palmeiras.jpg);
+      background-size: 100% 125%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: sans-serif;
+    }
+
+    h1 {
+      color: black;
+      text-shadow: 2px 2px 4px white;
+      margin-bottom: 10px;
+    }
+
+    canvas {
+      border: 15px solid #008000;
+      background-color: transparent;
+    }
+
+    #placar {
+      margin-top: 10px;
+      color: white;
+      text-shadow: 1px 1px 2px black;
+      font-size: 20px;
+    }
+
+    #menuDificuldade {
+      margin-bottom: 10px;
+      font-size: 16px;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ponguemeiras</h1>
+
+  <select id="menuDificuldade">
+    <option value="facil">Fácil</option>
+    <option value="medio" selected>Médio</option>
+    <option value="CORINTHIANS">CORINTHIANS</option>
+    <option value="MUNDIAL">MUNDIAL</option>
+  </select>
+
+  <canvas id="telaJogo" width="400" height="400"></canvas>
+  <div id="placar">Jogador 1: 0 | CPU: 0 | Dificuldade: Médio</div>
+
+  <script>
+    const tela = document.getElementById("telaJogo");
+    const ctx = tela.getContext("2d");
+    const placarDiv = document.getElementById("placar");
+    const menuDificuldade = document.getElementById("menuDificuldade");
+
+    const alturaRaquete = 80;
+    const larguraRaquete = 10;
+    const raioBola = 7;
+
+    let jogador1 = tela.height / 2 - alturaRaquete / 2;
+    let cpu = tela.height / 2 - alturaRaquete / 2;
+    let bolaX = tela.width / 2;
+    let bolaY = tela.height / 2;
+    let velocidadeBolaX = 4;
+    let velocidadeBolaY = 4;
+
+    let pontuacaoJogador = 0;
+    let pontuacaoCPU = 0;
+    let dificuldade = "Médio";
+    let aguardandoReinicio = false;
+
+    let teclas = {};
+
+    // Áudios
+    const somRaquete = new Audio("deus macheetos/mosquito gritando palmeiras estourado.mp3");
+    const somParede = new Audio("deus macheetos/Som de barra de ferro caindo para relaxar.mp3");
+    const musicaAcao = new Audio("deus macheetos/Hino do Palmeiras Estourado Earrape Winter.mp3");
+
+    musicaAcao.loop = true;
+    musicaAcao.volume = 1;
+    musicaAcao.play().catch(() => {
+      console.warn("Música não pôde ser reproduzida automaticamente.");
+    });
+
+    // Imagem de fundo no canvas
+    const imagemFundo = new Image();
+    imagemFundo.src = 'deus macheetos/Rapaz.png';
+
+    function atualizarDificuldade(valor) {
+      switch (valor) {
+        case "facil":
+          velocidadeBolaX = velocidadeBolaX > 0 ? 2 : -2;
+          velocidadeBolaY = 2;
+          dificuldade = "Fácil";
+          break;
+        case "medio":
+          velocidadeBolaX = velocidadeBolaX > 0 ? 4 : -4;
+          velocidadeBolaY = 4;
+          dificuldade = "Médio";
+          break;
+        case "CORINTHIANS":
+          velocidadeBolaX = velocidadeBolaX > 0 ? 10 : -10;
+          velocidadeBolaY = 7;
+          dificuldade = "CORINTHIANS";
+          break;
+        case "MUNDIAL":
+          velocidadeBolaX = velocidadeBolaX > 0 ? 50 : -50;
+          velocidadeBolaY = 7;
+          dificuldade = "MUNDIAL";
+          break;
+      }
+    }
+
+    menuDificuldade.addEventListener("change", () => {
+      atualizarDificuldade(menuDificuldade.value);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      teclas[e.key] = true;
+    });
+
+    document.addEventListener("keyup", (e) => {
+      teclas[e.key] = false;
+    });
+
+    function desenharRaquete(x, y, cor) {
+      ctx.fillStyle = cor;
+      ctx.fillRect(x, y, larguraRaquete, alturaRaquete);
+    }
+
+    function desenharBola(x, y, cor) {
+      ctx.fillStyle = cor;
+      ctx.beginPath();
+      ctx.arc(x, y, raioBola, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function reiniciarBola(marcador) {
+      bolaX = tela.width / 2;
+      bolaY = tela.height / 2;
+      velocidadeBolaX = marcador === "jogador" ? 4 : -4;
+      velocidadeBolaY = (Math.random() * 4 - 2);
+      aguardandoReinicio = true;
+
+      setTimeout(() => {
+        aguardandoReinicio = false;
+      }, 1000);
+    }
+
+    function atualizarJogo() {
+      if (aguardandoReinicio) return;
+
+      bolaX += velocidadeBolaX;
+      bolaY += velocidadeBolaY;
+
+      if (teclas["w"] || teclas["ArrowUp"]) jogador1 -= 6;
+      if (teclas["s"] || teclas["ArrowDown"]) jogador1 += 6;
+
+      if (jogador1 < 0) jogador1 = 0;
+      if (jogador1 + alturaRaquete > tela.height) jogador1 = tela.height - alturaRaquete;
+
+      cpu += (bolaY - (cpu + alturaRaquete / 2)) * 0.1;
+
+      if (bolaY + raioBola > tela.height || bolaY - raioBola < 0) {
+        velocidadeBolaY = -velocidadeBolaY;
+        somParede.play();
+      }
+
+      // Colisão jogador
+      if (bolaX - raioBola < 20 && bolaY > jogador1 && bolaY < jogador1 + alturaRaquete) {
+        velocidadeBolaX = -velocidadeBolaX;
+        somRaquete.play();
+      }
+
+      // Colisão CPU
+      if (bolaX + raioBola > tela.width - 20 && bolaY > cpu && bolaY < cpu + alturaRaquete) {
+        velocidadeBolaX = -velocidadeBolaX;
+        somRaquete.play();
+      }
+
+      // Gol CPU
+      if (bolaX < 0) {
+        pontuacaoCPU++;
+        reiniciarBola("cpu");
+      }
+
+      // Gol Jogador
+      if (bolaX > tela.width) {
+        pontuacaoJogador++;
+        reiniciarBola("jogador");
+      }
+
+      placarDiv.textContent = `Jogador 1: ${pontuacaoJogador} | CPU: ${pontuacaoCPU} | Dificuldade: ${dificuldade}`;
+    }
+
+    function desenharJogo() {
+      ctx.clearRect(0, 0, tela.width, tela.height);
+
+      // Desenha imagem de fundo no canvas
+      ctx.drawImage(imagemFundo, 0, 0, tela.width, tela.height);
+
+      desenharRaquete(10, jogador1, "#2b7e58");
+      desenharRaquete(tela.width - 20, cpu, "white");
+      desenharBola(bolaX, bolaY, "green");
+    }
+
+    function loop() {
+      atualizarJogo();
+      desenharJogo();
+      requestAnimationFrame(loop);
+    }
+
+    atualizarDificuldade("medio");
+    loop();
+  </script>
+</body>
+</html>
