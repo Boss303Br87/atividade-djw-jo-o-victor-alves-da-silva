@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Cobrinha</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: -5px;
+            background-color: black;
+            -webkit-text-fill-color: white;
+        }
+
+        .canvas {
+            background-image: url(https://i.kym-cdn.com/photos/images/original/002/528/119/556.gif);
+            background-size: 150% 150%;
+            background-position: center;
+            display: block;
+            margin: 0 auto;
+            border: 5px solid #1b0831;
+        }
+
+        #painel-controle {
+            text-align: center;
+            margin-top: 25px;
+            margin-bottom: 50px;
+        }
+
+        .dificuldade {
+            color: white;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jogo da Crobinha</h1>
+    <canvas class="canvas" id="tela" height="400" width="400">
+        Navegador não suporta o Canvas e HTML5
+    </canvas>
+
+    <div id="painel-controle">
+        <label for="dificuldade">Dificuldade: </label>
+        <select id="dificuldade">
+            <option value="facil">Fácil</option>
+            <option value="medio" selected>Médio</option>
+            <option value="dificil">Difícil</option>
+        </select>
+        <button onclick="iniciarJogo()">Iniciar Jogo</button>
+        <p>Pontuação: <span id="pontuacao">0</span></p>
+    </div>
+
+    <script>
+        document.getElementById("dificuldade").style.color = "white";
+        const tela = document.getElementById("tela");
+        const contexto = tela.getContext("2d");
+        const tamanhoBloco = 20;
+        const totalBlocos = tela.width / tamanhoBloco;
+
+        let cobrinha = [{ x: 5, y: 5 }];
+        let direcao = "direita";
+        let comida = gerarComida();
+        let pontuacao = 0;
+        let intervaloJogo;
+        let musicaAcao = null;
+
+        function desenharCenario() {
+            contexto.clearRect(0, 0, tela.width, tela.height);
+        }
+
+        function desenharCobrinha() {
+            for (let parte of cobrinha) {
+                contexto.fillStyle = "lime";
+                contexto.fillRect(parte.x * tamanhoBloco, parte.y * tamanhoBloco, tamanhoBloco, tamanhoBloco);
+            }
+        }
+
+        function desenharComida() {
+            contexto.fillStyle = "red";
+            contexto.fillRect(comida.x * tamanhoBloco, comida.y * tamanhoBloco, tamanhoBloco, tamanhoBloco);
+        }
+
+        function gerarComida() {
+            return {
+                x: Math.floor(Math.random() * totalBlocos),
+                y: Math.floor(Math.random() * totalBlocos)
+            };
+        }
+
+        function verificarComida() {
+            if (cobrinha[0].x === comida.x && cobrinha[0].y === comida.y) {
+                comida = gerarComida();
+                cobrinha.push({});
+                pontuacao++;
+                atualizarPontuacao();
+            }
+        }
+
+        function atualizarPontuacao() {
+            document.getElementById("pontuacao").innerText = pontuacao;
+        }
+
+        function verificarColisoes() {
+            let cabeca = cobrinha[0];
+            if (
+                cabeca.x < 0 || cabeca.x >= totalBlocos ||
+                cabeca.y < 0 || cabeca.y >= totalBlocos
+            ) {
+                gameOver();
+            }
+            for (let i = 1; i < cobrinha.length; i++) {
+                if (cabeca.x === cobrinha[i].x && cabeca.y === cobrinha[i].y) {
+                    gameOver();
+                }
+            }
+        }
+
+        function moverCobrinha() {
+            let cabeca = { ...cobrinha[0] };
+            if (direcao === "direita") cabeca.x++;
+            if (direcao === "esquerda") cabeca.x--;
+            if (direcao === "cima") cabeca.y--;
+            if (direcao === "baixo") cabeca.y++;
+            cobrinha.unshift(cabeca);
+            cobrinha.pop();
+        }
+
+        document.addEventListener("keydown", function (evento) {
+            const key = evento.key.toLowerCase();
+            if (key === "w" && direcao !== "baixo") direcao = "cima";
+            if (key === "s" && direcao !== "cima") direcao = "baixo";
+            if (key === "a" && direcao !== "direita") direcao = "esquerda";
+            if (key === "d" && direcao !== "esquerda") direcao = "direita";
+            if (evento.key === "ArrowUp" && direcao !== "baixo") direcao = "cima";
+            if (evento.key === "ArrowDown" && direcao !== "cima") direcao = "baixo";
+            if (evento.key === "ArrowLeft" && direcao !== "direita") direcao = "esquerda";
+            if (evento.key === "ArrowRight" && direcao !== "esquerda") direcao = "direita";
+        });
+
+        function iniciarJogo() {
+            carregarMusicas();
+
+            cobrinha = [{ x: 5, y: 5 }];
+            direcao = "direita";
+            pontuacao = 0;
+            atualizarPontuacao();
+            comida = gerarComida();
+
+            let dificuldade = document.getElementById("dificuldade").value;
+            let velocidade = dificuldade === "facil" ? 200 : dificuldade === "medio" ? 120 : 70;
+
+            clearInterval(intervaloJogo);
+            intervaloJogo = setInterval(() => {
+                desenharCenario();
+                moverCobrinha();
+                desenharCobrinha();
+                desenharComida();
+                verificarComida();
+                verificarColisoes();
+            }, velocidade);
+        }
+
+        function gameOver() {
+            clearInterval(intervaloJogo);
+            if (musicaAcao) {
+                musicaAcao.pause();
+                musicaAcao.currentTime = 0;
+            }
+            alert("Fim de jogo! Sua pontuação: " + pontuacao);
+        }
+
+        function carregarMusicas() {
+            if (!musicaAcao) {
+                musicaAcao = new Audio();
+                musicaAcao.src = 'sad/ESCUDO VOZ DA VERDADE NÃO HÁ FERROLHO ESTOURADO.mp3';
+                musicaAcao.volume = 0.8; 
+                musicaAcao.loop = true;
+                musicaAcao.load();
+            }
+
+            if (musicaAcao.paused) {
+                musicaAcao.play();
+            }
+        }
+    </script>
+</body>
+</html>
